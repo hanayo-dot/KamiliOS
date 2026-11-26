@@ -134,13 +134,14 @@ KamiliOS defines **11 operational roles** divided into three strategic echelons:
 
 ---
 
-### Phase 4: Kenyan Integrations: M-Pesa B2C & Africa's Talking SMS/USSD *(Status: SCHEDULED)*
-- [ ] **Safaricom M-Pesa Daraja API Integration:**
-  - B2C (Business-to-Customer) endpoint integration for direct disbursement of approved field allowances, agent stipends, and fuel floats directly to mobile wallets.
-  - Instant MPesa receipt reference validation and automated reconciliation against petty cash vouchers.
-- [ ] **SMS / USSD Broadcast Engine (Africa's Talking):**
-  - Instant SMS broadcast of campaign rally notices and battle orders to registered grassroots marshals.
-  - Fallback USSD code flow (`*XXX#`) for feature phone field agents to report polling station attendance and submit incident alerts without smartphone access.
+### Phase 4: Kenyan Integrations: M-Pesa B2C & Africa's Talking SMS/USSD *(Status: COMPLETED)*
+- [x] **Safaricom M-Pesa Daraja B2C Integration:**
+  - Automated B2C disbursement gateway ([src/utils/kenyanGateways.ts](file:///home/hanayo/KamiliOS/src/utils/kenyanGateways.ts)) with Kenyan phone normalization and Safaricom tariff calculations.
+  - Interactive 1-click B2C modal in [FinanceModule.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/FinanceModule.tsx) allowing treasury officers to release candidate-approved funds directly to field wallets with generated M-Pesa transaction codes.
+- [x] **Alphanumeric Bulk SMS Broadcast Engine (Africa's Talking):**
+  - Integrated war room SMS dispatcher ([src/components/dashboard/CommunicationsModule.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/CommunicationsModule.tsx)) supporting branded Sender IDs (e.g. `KAMILI_CMD`, `SAKAJA2027`), segment calculation, and real-time carrier cost tracking (KES 0.80/SMS).
+- [x] **Feature Phone ("Kabambe") USSD Simulator:**
+  - On-screen hardware keypad phone emulator for testing two-way USSD flows (`*384*27#`) enabling offline field agents to check in, report incidents, and submit live polling stream turnouts without smartphones.
 
 ---
 

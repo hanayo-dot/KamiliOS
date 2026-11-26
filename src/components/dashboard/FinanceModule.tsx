@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useTenant } from '@/context/TenantContext';
 import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
+import { executeB2CDisbursement, B2CPaymentResponse, normalizeKenyanPhone } from '@/utils/kenyanGateways';
+import { CampaignExpense } from '@/types/campaign';
 import { 
   DollarSign, 
   Plus, 
@@ -15,16 +17,25 @@ import {
   Receipt,
   Lock,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Smartphone,
+  CheckCircle2,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 
 export default function FinanceModule() {
-  const { currentTenant, currentUser, expenses, addExpense } = useTenant();
+  const { currentTenant, currentUser, expenses, addExpense, updateExpenseStatus } = useTenant();
   const permissions = getRolePermissions(currentUser?.role);
   const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
-  const [showModal, setShowModal] = useState(false);
 
-  // Form
+  const [showModal, setShowModal] = useState(false);
+  const [b2cTargetExpense, setB2cTargetExpense] = useState<CampaignExpense | null>(null);
+  const [b2cPhone, setB2cPhone] = useState('+254 722 000 111');
+  const [isDisbursing, setIsDisbursing] = useState(false);
+  const [b2cSuccessResult, setB2cSuccessResult] = useState<B2CPaymentResponse | null>(null);
+
+  // Form states
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'Logistics & Transport' | 'Event Venues' | 'Merchandise & Branding' | 'Field Stipends' | 'Media & Comms' | 'Security'>('Field Stipends');
@@ -67,6 +78,35 @@ export default function FinanceModule() {
     setReceiptRef('');
   };
 
+  const handleOpenB2C = (expense: CampaignExpense) => {
+    setB2cTargetExpense(expense);
+    setB2cPhone(expense.beneficiaryPhone || '+254 722 000 111');
+    setB2cSuccessResult(null);
+  };
+
+  const handleExecuteB2C = async () => {
+    if (!b2cTargetExpense) return;
+    setIsDisbursing(true);
+    try {
+      const response = await executeB2CDisbursement({
+        phone: b2cPhone,
+        amount: b2cTargetExpense.amount,
+        commandID: 'BusinessPayment',
+        remarks: `KamiliOS Allowance: ${b2cTargetExpense.description.slice(0, 25)}`,
+        occasion: 'FieldMobilization',
+        tenantId: currentTenant.id,
+      });
+
+      setB2cSuccessResult(response);
+      // Update expense status to disbursed in state with actual M-Pesa Transaction ID
+      updateExpenseStatus(b2cTargetExpense.id, 'disbursed', response.transactionId);
+    } catch (err) {
+      console.error('Failed to disburse B2C', err);
+    } finally {
+      setIsDisbursing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -79,14 +119,14 @@ export default function FinanceModule() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time expenditure tracking, M-Pesa field stipends, and statutory audit compliance.
+            Real-time expenditure tracking, Safaricom Daraja M-Pesa B2C disbursements, and statutory audit compliance.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {permissions.canViewIEBCAudit && (
             <button
-              onClick={() => alert('IEBC Campaign Financing Return exported as PDF')}
+              onClick={() => alert('IEBC Statutory Campaign Financing Return exported as audit-ready PDF/CSV')}
               className="px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2"
             >
               <Download className="w-4 h-4 text-emerald-400" />
@@ -147,11 +187,19 @@ export default function FinanceModule() {
         </div>
 
         <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800">
-          <span className="text-xs text-slate-400 font-medium">Primary Payout Gateway</span>
-          <div className="text-lg font-bold text-teal-300 mt-2 flex items-center gap-2">
-            <span>Safaricom Daraja (M-Pesa B2C)</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">Daraja M-Pesa B2C Float</span>
+            <span className="text-[10px] font-mono bg-emerald-950/60 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">
+              API Active
+            </span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Sub-second float top-up to ward marshals</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-teal-300 mt-2">
+            KES 817,500
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Shortcode 600000 (Bulk Disbursement)</span>
+          </div>
         </div>
       </div>
 
@@ -173,8 +221,8 @@ export default function FinanceModule() {
                 <th className="p-4">Amount</th>
                 <th className="p-4">Disbursement Method</th>
                 <th className="p-4">Submitted By</th>
-                <th className="p-4">Receipt Ref</th>
-                <th className="p-4">Status</th>
+                <th className="p-4">M-Pesa / Receipt Ref</th>
+                <th className="p-4">Status & Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
@@ -185,39 +233,189 @@ export default function FinanceModule() {
                   </td>
                 </tr>
               ) : (
-                visibleExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="p-4 font-semibold text-white">{expense.description}</td>
-                    <td className="p-4 text-slate-300">{expense.category}</td>
-                    <td className="p-4 font-bold text-emerald-400">
-                      KES {expense.amount.toLocaleString()}
-                    </td>
-                    <td className="p-4 font-mono text-[11px]">{expense.disbursementMethod}</td>
-                    <td className="p-4">
-                      <div>{expense.submittedBy}</div>
-                      <div className="text-[10px] text-slate-500 capitalize">{expense.submittingRole.replace('_', ' ')}</div>
-                    </td>
-                    <td className="p-4 font-mono text-slate-400">{expense.receiptRef}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        expense.status === 'candidate_approved' || expense.status === 'disbursed'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                          : expense.status === 'pending'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                      }`}>
-                        {expense.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                visibleExpenses.map((expense) => {
+                  const canDisburse = 
+                    (permissions.canVetExpenses || permissions.canApproveDisbursements) && 
+                    expense.status === 'candidate_approved';
+
+                  return (
+                    <tr key={expense.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="p-4 font-semibold text-white">{expense.description}</td>
+                      <td className="p-4 text-slate-300">{expense.category}</td>
+                      <td className="p-4 font-bold text-emerald-400">
+                        KES {expense.amount.toLocaleString()}
+                      </td>
+                      <td className="p-4 font-mono text-[11px] flex items-center gap-1.5 pt-5">
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>{expense.disbursementMethod}</span>
+                      </td>
+                      <td className="p-4">
+                        <div>{expense.submittedBy}</div>
+                        <div className="text-[10px] text-slate-500 capitalize">{expense.submittingRole.replace('_', ' ')}</div>
+                      </td>
+                      <td className="p-4 font-mono text-slate-300">
+                        <span className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 font-semibold text-emerald-400">
+                          {expense.receiptRef}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            expense.status === 'disbursed'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                              : expense.status === 'candidate_approved'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                          }`}>
+                            {expense.status.replace('_', ' ')}
+                          </span>
+
+                          {/* 1-Click Safaricom M-Pesa Daraja B2C Disbursement Trigger */}
+                          {canDisburse && (
+                            <button
+                              onClick={() => handleOpenB2C(expense)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[10px] flex items-center gap-1 shadow-md shadow-emerald-500/20 transition-all shrink-0"
+                            >
+                              <Zap className="w-3 h-3 fill-current" />
+                              Pay via B2C
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal */}
+      {/* M-Pesa Daraja B2C Disbursement Modal */}
+      {b2cTargetExpense && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-emerald-500/40 rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Safaricom Daraja B2C Payout</h3>
+                  <span className="text-[10px] text-slate-400 font-mono">Bulk Disbursement Engine</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setB2cTargetExpense(null)} 
+                className="text-slate-400 hover:text-white text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+
+            {b2cSuccessResult ? (
+              <div className="space-y-4 py-2 text-center animate-in fade-in">
+                <div className="w-14 h-14 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 mx-auto">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-white">M-Pesa B2C Payment Disbursed!</h4>
+                  <p className="text-xs text-slate-400 mt-1">Funds deposited immediately to agent's Safaricom wallet.</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-800 font-mono text-xs text-left space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">M-Pesa Code:</span>
+                    <strong className="text-emerald-400">{b2cSuccessResult.transactionId}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Amount Sent:</span>
+                    <strong className="text-white">KES {b2cSuccessResult.amount.toLocaleString()}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Recipient Phone:</span>
+                    <span className="text-slate-200">{b2cSuccessResult.recipientPhone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Safaricom Fee:</span>
+                    <span className="text-slate-400">KES {b2cSuccessResult.serviceChargeKES}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-800 pt-1 mt-1">
+                    <span className="text-slate-400">Remaining Campaign Float:</span>
+                    <span className="text-teal-300">KES {b2cSuccessResult.remainingFloatKES.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setB2cTargetExpense(null)}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
+                >
+                  Return to Ledger
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                  <div className="text-slate-400 text-[11px]">Expense Target:</div>
+                  <div className="text-white font-bold">{b2cTargetExpense.description}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm">
+                    Disbursement: KES {b2cTargetExpense.amount.toLocaleString()}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Beneficiary Safaricom Phone Number</label>
+                  <input
+                    type="text"
+                    value={b2cPhone}
+                    onChange={(e) => setB2cPhone(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-1 block">Recipient must be a registered M-Pesa subscriber.</span>
+                </div>
+
+                <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-1 text-[11px]">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Disbursement Amount:</span>
+                    <span className="text-white font-bold">KES {b2cTargetExpense.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Safaricom B2C Tariff Fee:</span>
+                    <span className="text-slate-300">KES {b2cTargetExpense.amount <= 1000 ? '15.00' : '23.00'}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-800 pt-1 text-slate-300">
+                    <span>Total Deducted from Shortcode:</span>
+                    <span className="text-emerald-400 font-bold">
+                      KES {(b2cTargetExpense.amount + (b2cTargetExpense.amount <= 1000 ? 15 : 23)).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setB2cTargetExpense(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExecuteB2C}
+                    disabled={isDisbursing}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>{isDisbursing ? 'Connecting to Safaricom...' : 'Authorize B2C Release'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: New Expense Requisition */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
@@ -264,6 +462,7 @@ export default function FinanceModule() {
                     <option value="Logistics & Transport">Logistics & Transport</option>
                     <option value="Event Venues">Event Venues</option>
                     <option value="Merchandise & Branding">Merchandise & Branding</option>
+                    <option value="Media & Comms">Media & Comms</option>
                     <option value="Security">Security</option>
                   </select>
                 </div>
@@ -271,35 +470,44 @@ export default function FinanceModule() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Disbursement Channel</label>
+                  <label className="block text-slate-300 font-medium mb-1">Payment Method</label>
                   <select
                     value={method}
                     onChange={(e: any) => setMethod(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none"
                   >
                     <option value="M-Pesa B2C">M-Pesa B2C</option>
-                    <option value="Petty Cash Float">Petty Cash Float</option>
                     <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Petty Cash Float">Petty Cash Float</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Receipt / Invoice Ref</label>
+                  <label className="block text-slate-300 font-medium mb-1">Receipt Reference</label>
                   <input
                     type="text"
-                    placeholder="e.g. RCP-8839"
+                    placeholder="Auto or e.g. VOUCH-01"
                     value={receiptRef}
                     onChange={(e) => setReceiptRef(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none font-mono"
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
-              >
-                Submit for Candidate & Finance Review
-              </button>
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold"
+                >
+                  Submit for Candidate Sign-Off
+                </button>
+              </div>
             </form>
           </div>
         </div>

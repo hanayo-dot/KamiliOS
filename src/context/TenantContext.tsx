@@ -36,6 +36,7 @@ interface TenantContextType {
   // Actions
   addReport: (report: Omit<ActivityReport, 'id' | 'tenantId'>) => void;
   addExpense: (expense: Omit<CampaignExpense, 'id' | 'tenantId'>) => void;
+  updateExpenseStatus: (expenseId: string, status: CampaignExpense['status'], receiptRef?: string) => void;
   handleApproval: (approvalId: string, action: 'approved' | 'rejected') => void;
   resolveIncident: (incidentId: string) => void;
 }
@@ -99,6 +100,17 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  const updateExpenseStatus = (expenseId: string, status: CampaignExpense['status'], receiptRef?: string) => {
+    setTenantExpenses(prev => ({
+      ...prev,
+      [currentTenant.id]: (prev[currentTenant.id] || []).map(exp => 
+        exp.id === expenseId 
+          ? { ...exp, status, receiptRef: receiptRef || exp.receiptRef }
+          : exp
+      )
+    }));
+  };
+
   const handleApproval = (approvalId: string, action: 'approved' | 'rejected') => {
     setTenantApprovals(prev => ({
       ...prev,
@@ -133,6 +145,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         approvals: tenantApprovals[currentTenant.id] || [],
         addReport,
         addExpense,
+        updateExpenseStatus,
         handleApproval,
         resolveIncident,
       }}

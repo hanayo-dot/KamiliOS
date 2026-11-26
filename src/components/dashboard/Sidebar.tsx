@@ -43,6 +43,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'finance', name: 'Finance & Floats', icon: DollarSign },
     { id: 'approvals', name: 'Approvals Centre', icon: CheckCircle },
     { id: 'incidents', name: 'Incidents & Security', icon: AlertTriangle },
+    { id: 'communications', name: 'SMS & USSD Dispatch', icon: MessageSquare },
     { id: 'reports', name: 'IEBC & Analytics', icon: BarChart3 },
     { id: 'settings', name: 'Tenant Security', icon: Settings },
   ];
@@ -126,7 +127,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               Viewing as Role:
             </span>
             <span className="text-[9px] font-mono text-emerald-400">
-              {navigationItems.length}/10 Tabs
+              {navigationItems.length}/11 Tabs
             </span>
           </div>
           <select

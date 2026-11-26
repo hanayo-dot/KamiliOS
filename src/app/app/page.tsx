@@ -11,6 +11,7 @@ import FinanceModule from '@/components/dashboard/FinanceModule';
 import ApprovalsModule from '@/components/dashboard/ApprovalsModule';
 import TeamsModule from '@/components/dashboard/TeamsModule';
 import IncidentsModule from '@/components/dashboard/IncidentsModule';
+import CommunicationsModule from '@/components/dashboard/CommunicationsModule';
 import Link from 'next/link';
 import { 
   Bell, 
@@ -119,6 +120,7 @@ function DashboardShell() {
               {activeTab === 'approvals' && <ApprovalsModule />}
               {activeTab === 'teams' && <TeamsModule />}
               {activeTab === 'incidents' && <IncidentsModule />}
+              {activeTab === 'communications' && <CommunicationsModule />}
 
               {/* Placeholders for secondary modules */}
               {activeTab === 'calendar' && (
