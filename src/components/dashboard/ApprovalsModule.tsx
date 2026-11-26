@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   CheckCircle, 
   XCircle, 
@@ -11,11 +12,15 @@ import {
   Calendar, 
   UserCheck, 
   FileText,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function ApprovalsModule() {
-  const { currentTenant, approvals, handleApproval } = useTenant();
+  const { currentTenant, currentUser, approvals, handleApproval } = useTenant();
+  const permissions = getRolePermissions(currentUser?.role);
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
 
   const pendingList = approvals.filter(a => a.status === 'pending');
   const resolvedList = approvals.filter(a => a.status !== 'pending');
@@ -35,13 +40,33 @@ export default function ApprovalsModule() {
             Sole decision-authority queue for <strong className="text-white">{currentTenant.candidateName}</strong>. All signed actions are recorded in immutable audit logs.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${roleInfo.badgeColor}`}>
+            {roleInfo.title}
+          </span>
+        </div>
       </div>
+
+      {/* RBAC Advisory Banner for Non-Executives */}
+      {!permissions.canExecuteApprovals && (
+        <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs text-amber-200 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <strong className="text-white">View-Only Queue Clearance:</strong> As <strong className="text-amber-300">{roleInfo.title}</strong>, you can track the review status of submitted requisitions, but direct sign-off authority is exclusively reserved for the <strong>Candidate</strong> and <strong>Campaign Director</strong>.
+            </div>
+          </div>
+          <span className="text-[10px] font-mono uppercase bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30 shrink-0">
+            Sign-Off Locked
+          </span>
+        </div>
+      )}
 
       {/* Pending Items */}
       <div className="space-y-4">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-400" />
-          Awaiting Your Direct Authorization
+          {permissions.canExecuteApprovals ? 'Awaiting Your Direct Authorization' : 'Pending Candidate Authorization'}
         </h3>
 
         {pendingList.length === 0 ? (
@@ -77,20 +102,29 @@ export default function ApprovalsModule() {
               </div>
 
               <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
-                <button
-                  onClick={() => handleApproval(item.id, 'rejected')}
-                  className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <XCircle className="w-4 h-4 text-red-400" />
-                  Decline / Return
-                </button>
-                <button
-                  onClick={() => handleApproval(item.id, 'approved')}
-                  className="flex-1 md:flex-none px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Grant Approval
-                </button>
+                {permissions.canExecuteApprovals ? (
+                  <>
+                    <button
+                      onClick={() => handleApproval(item.id, 'rejected')}
+                      className="flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <XCircle className="w-4 h-4 text-red-400" />
+                      Decline / Return
+                    </button>
+                    <button
+                      onClick={() => handleApproval(item.id, 'approved')}
+                      className="flex-1 md:flex-none px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Grant Approval
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-xs flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Candidate Sign-Off Authority Required</span>
+                  </div>
+                )}
               </div>
             </div>
           ))

@@ -105,20 +105,20 @@ KamiliOS defines **11 operational roles** divided into three strategic echelons:
 
 ---
 
-### Phase 2: Intra-Campaign Role-Based Access Control (RBAC) *(Status: IMMEDIATE PRIORITY)*
-- [ ] **Role Permissions Engine:**
-  - Create a centralized permissions map (`src/utils/rbac.ts`) defining explicit module-level, field-level, and action-level permissions for all 11 roles.
-- [ ] **Dynamic Navigation Filtering:**
-  - Update [Sidebar.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/Sidebar.tsx) to only render navigation tabs authorized for the currently selected role.
-  - Hide Finance, Approvals, and Security Settings from Ward Coordinators and Field Marshals.
-- [ ] **Data Slicing & Views per Role:**
-  - **Candidate / Director View:** High-level strategic metrics, candidate greeting, executive approval queue, IEBC audit summaries.
-  - **Finance View:** Full expense ledgers, petty cash float balance reconciliation, disbursement queues, voucher audits.
-  - **Field Coordinator View:** Constituency- and Ward-specific activity logs, team rosters, incident dispatch, stipend requisition forms.
-  - **Field Member / Volunteer View:** Simplified mobile-first submit screen (File Activity, Report Incident, Upload Receipt).
-- [ ] **Action Guardrails:**
-  - Restrict the `handleApproval` trigger exclusively to `candidate` and `campaign_director`.
-  - Prevent non-finance roles from modifying disbursement statuses.
+### Phase 2: Intra-Campaign Role-Based Access Control (RBAC) *(Status: COMPLETED)*
+- [x] **Role Permissions Engine:**
+  - Created centralized permissions map ([src/utils/rbac.ts](file:///home/hanayo/KamiliOS/src/utils/rbac.ts)) defining module-level, field-level, and action-level permissions for all 11 roles.
+- [x] **Dynamic Navigation Filtering:**
+  - Updated [Sidebar.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/Sidebar.tsx) to dynamically render only authorized navigation tabs for the active role with auto-redirection on role switch.
+  - Restricted Finance, Approvals, and Security Settings from Ward Coordinators, Field Members, and non-treasury roles.
+- [x] **Data Slicing & Views per Role:**
+  - **Candidate / Director View:** Full executive dashboard, dynamic greetings, direct decision authorization, and treasury overviews.
+  - **Finance View:** Full expense ledgers, petty cash float reconciliation, and IEBC statutory export controls.
+  - **Field Coordinator & Member View:** Scoped to assigned ward/constituency jurisdiction, personal expense voucher tracking, and field log entry.
+- [x] **Action Guardrails & Security:**
+  - Candidate-exclusive sign-off authority enforced in [ApprovalsModule.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/ApprovalsModule.tsx) and [ExecutiveDashboard.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/ExecutiveDashboard.tsx).
+  - Defection "Burn Switch" and operative registration restricted to executive command in [TeamsModule.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/TeamsModule.tsx).
+  - Incident resolution action permissions enforced in [IncidentsModule.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/IncidentsModule.tsx).
 
 ---
 

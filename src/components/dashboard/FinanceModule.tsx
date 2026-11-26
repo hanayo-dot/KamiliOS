@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   DollarSign, 
   Plus, 
@@ -11,11 +12,16 @@ import {
   FileText, 
   Download,
   AlertCircle,
-  Receipt
+  Receipt,
+  Lock,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function FinanceModule() {
   const { currentTenant, currentUser, expenses, addExpense } = useTenant();
+  const permissions = getRolePermissions(currentUser?.role);
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
   const [showModal, setShowModal] = useState(false);
 
   // Form
@@ -25,11 +31,16 @@ export default function FinanceModule() {
   const [method, setMethod] = useState<'M-Pesa B2C' | 'Bank Transfer' | 'Petty Cash Float'>('M-Pesa B2C');
   const [receiptRef, setReceiptRef] = useState('');
 
-  const totalSpent = expenses
+  // RBAC Data Slicing: Non-finance/executive roles only see their own submitted vouchers
+  const visibleExpenses = permissions.canViewFullFinancialLedger
+    ? expenses
+    : expenses.filter(e => e.submittedBy === currentUser?.name || e.submittingRole === currentUser?.role);
+
+  const totalSpent = visibleExpenses
     .filter(e => e.status === 'candidate_approved' || e.status === 'disbursed')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const pendingAmount = expenses
+  const pendingAmount = visibleExpenses
     .filter(e => e.status === 'pending' || e.status === 'finance_approved')
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -61,46 +72,78 @@ export default function FinanceModule() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-6 rounded-2xl">
         <div>
-          <h2 className="text-xl font-bold text-white">Campaign Finance & Petty Cash Floats</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-white">Campaign Finance & Petty Cash Floats</h2>
+            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${roleInfo.badgeColor}`}>
+              {roleInfo.title}
+            </span>
+          </div>
           <p className="text-xs text-slate-400 mt-1">
             Real-time expenditure tracking, M-Pesa field stipends, and statutory audit compliance.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => alert('IEBC Campaign Financing Return exported as PDF')}
-            className="px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2"
-          >
-            <Download className="w-4 h-4 text-emerald-400" />
-            IEBC Audit Export
-          </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            Submit Expense Voucher
-          </button>
+          {permissions.canViewIEBCAudit && (
+            <button
+              onClick={() => alert('IEBC Campaign Financing Return exported as PDF')}
+              className="px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              IEBC Audit Export
+            </button>
+          )}
+          {permissions.canSubmitExpenseClaim && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20"
+            >
+              <Plus className="w-4 h-4" />
+              Submit Expense Voucher
+            </button>
+          )}
         </div>
       </div>
+
+      {/* RBAC Notice for Restricted Views */}
+      {!permissions.canViewFullFinancialLedger && (
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div>
+              <strong className="text-white">Field Requisitions Scope:</strong> As <strong className="text-emerald-400">{roleInfo.title}</strong>, you have access to your personal expense claims and float requisitions. The consolidated campaign treasury ledger is isolated to Finance and Executive command.
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">
+            Ledger Isolated
+          </span>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800">
-          <span className="text-xs text-slate-400 font-medium">Approved & Disbursed</span>
+          <span className="text-xs text-slate-400 font-medium">
+            {permissions.canViewFullFinancialLedger ? 'Approved & Disbursed' : 'My Approved Claims'}
+          </span>
           <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2">
             KES {totalSpent.toLocaleString()}
           </div>
-          <div className="text-[11px] text-emerald-400 mt-1">Cleared by candidate & finance</div>
+          <div className="text-[11px] text-emerald-400 mt-1">
+            {permissions.canViewFullFinancialLedger ? 'Cleared by candidate & finance' : 'Disbursed to your mobile float'}
+          </div>
         </div>
 
         <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800">
-          <span className="text-xs text-slate-400 font-medium">Pending Candidate Sign-Off</span>
+          <span className="text-xs text-slate-400 font-medium">
+            {permissions.canViewFullFinancialLedger ? 'Pending Candidate Sign-Off' : 'My Pending Claims'}
+          </span>
           <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 mt-2">
             KES {pendingAmount.toLocaleString()}
           </div>
-          <div className="text-[11px] text-amber-400/80 mt-1">Awaiting approval before release</div>
+          <div className="text-[11px] text-amber-400/80 mt-1">
+            {permissions.canViewFullFinancialLedger ? 'Awaiting approval before release' : 'Under treasury verification'}
+          </div>
         </div>
 
         <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800">
@@ -115,8 +158,10 @@ export default function FinanceModule() {
       {/* Expenses Table */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white">Recorded Campaign Expenditures</h3>
-          <span className="text-xs text-slate-400">{expenses.length} records</span>
+          <h3 className="text-sm font-bold text-white">
+            {permissions.canViewFullFinancialLedger ? 'Recorded Campaign Expenditures' : 'My Submitted Expense Vouchers'}
+          </h3>
+          <span className="text-xs text-slate-400">{visibleExpenses.length} records</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -133,32 +178,40 @@ export default function FinanceModule() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {expenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="p-4 font-semibold text-white">{expense.description}</td>
-                  <td className="p-4 text-slate-300">{expense.category}</td>
-                  <td className="p-4 font-bold text-emerald-400">
-                    KES {expense.amount.toLocaleString()}
-                  </td>
-                  <td className="p-4 font-mono text-[11px]">{expense.disbursementMethod}</td>
-                  <td className="p-4">
-                    <div>{expense.submittedBy}</div>
-                    <div className="text-[10px] text-slate-500 capitalize">{expense.submittingRole.replace('_', ' ')}</div>
-                  </td>
-                  <td className="p-4 font-mono text-slate-400">{expense.receiptRef}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      expense.status === 'candidate_approved' || expense.status === 'disbursed'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                        : expense.status === 'pending'
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                    }`}>
-                      {expense.status.replace('_', ' ')}
-                    </span>
+              {visibleExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                    No expense vouchers filed yet under your account. Click "Submit Expense Voucher" above to request a field stipend or operational refund.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                visibleExpenses.map((expense) => (
+                  <tr key={expense.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="p-4 font-semibold text-white">{expense.description}</td>
+                    <td className="p-4 text-slate-300">{expense.category}</td>
+                    <td className="p-4 font-bold text-emerald-400">
+                      KES {expense.amount.toLocaleString()}
+                    </td>
+                    <td className="p-4 font-mono text-[11px]">{expense.disbursementMethod}</td>
+                    <td className="p-4">
+                      <div>{expense.submittedBy}</div>
+                      <div className="text-[10px] text-slate-500 capitalize">{expense.submittingRole.replace('_', ' ')}</div>
+                    </td>
+                    <td className="p-4 font-mono text-slate-400">{expense.receiptRef}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        expense.status === 'candidate_approved' || expense.status === 'disbursed'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                          : expense.status === 'pending'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                      }`}>
+                        {expense.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

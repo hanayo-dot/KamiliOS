@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   Users, 
   UserPlus, 
@@ -12,15 +13,19 @@ import {
   Mail, 
   CheckCircle2, 
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 
 export default function TeamsModule() {
-  const { currentTenant, users } = useTenant();
+  const { currentTenant, currentUser, users } = useTenant();
+  const permissions = getRolePermissions(currentUser?.role);
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [burnNotice, setBurnNotice] = useState<string | null>(null);
 
   const handleBurnSwitch = (userName: string) => {
+    if (!permissions.canTriggerBurnSwitch) return;
     setBurnNotice(userName);
     setTimeout(() => setBurnNotice(null), 4000);
   };
@@ -30,19 +35,26 @@ export default function TeamsModule() {
       {/* Top Header */}
       <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white">Campaign Hierarchy & Personnel Directory</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-white">Campaign Hierarchy & Personnel Directory</h2>
+            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${roleInfo.badgeColor}`}>
+              {roleInfo.title}
+            </span>
+          </div>
           <p className="text-xs text-slate-400 mt-1">
             Role-Based Access Control and instant session revocation for {currentTenant.name}.
           </p>
         </div>
 
-        <button 
-          onClick={() => alert('Add Team Member Dialog')}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20"
-        >
-          <UserPlus className="w-4 h-4" />
-          Register Campaign Operative
-        </button>
+        {permissions.canRegisterPersonnel && (
+          <button 
+            onClick={() => alert('Add Team Member Dialog')}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20"
+          >
+            <UserPlus className="w-4 h-4" />
+            Register Campaign Operative
+          </button>
+        )}
       </div>
 
       {burnNotice && (
@@ -122,14 +134,20 @@ export default function TeamsModule() {
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <span className="text-[11px] text-slate-500 mr-2">Active: {user.lastActive}</span>
                 {user.role !== 'candidate' && (
-                  <button
-                    onClick={() => handleBurnSwitch(user.name)}
-                    className="px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                    title="Instantly revoke all access if user switches camps"
-                  >
-                    <Flame className="w-3.5 h-3.5 text-red-400" />
-                    Burn Switch
-                  </button>
+                  permissions.canTriggerBurnSwitch ? (
+                    <button
+                      onClick={() => handleBurnSwitch(user.name)}
+                      className="px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                      title="Instantly revoke all access if user switches camps"
+                    >
+                      <Flame className="w-3.5 h-3.5 text-red-400" />
+                      Burn Switch
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" /> Protected
+                    </span>
+                  )
                 )}
               </div>
             </div>

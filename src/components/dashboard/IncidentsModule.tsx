@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   AlertTriangle, 
   Plus, 
@@ -10,11 +11,14 @@ import {
   MapPin, 
   ShieldAlert, 
   Radio, 
-  ChevronRight 
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 
 export default function IncidentsModule() {
-  const { currentTenant, incidents, resolveIncident } = useTenant();
+  const { currentTenant, currentUser, incidents, resolveIncident } = useTenant();
+  const permissions = getRolePermissions(currentUser?.role);
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
 
   return (
     <div className="space-y-6">
@@ -23,6 +27,9 @@ export default function IncidentsModule() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-white">Field Incidents & Escalations</h2>
+            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${roleInfo.badgeColor}`}>
+              {roleInfo.title}
+            </span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/30">
               {incidents.filter(i => i.status !== 'resolved').length} Open Blockers
             </span>
@@ -86,13 +93,19 @@ export default function IncidentsModule() {
                   </span>
                   
                   {incident.status !== 'resolved' && (
-                    <button
-                      onClick={() => resolveIncident(incident.id)}
-                      className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Mark Resolved
-                    </button>
+                    permissions.canResolveIncidents ? (
+                      <button
+                        onClick={() => resolveIncident(incident.id)}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Mark Resolved
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-medium px-2 py-1 rounded bg-slate-950 border border-slate-800 flex items-center gap-1">
+                        <Lock className="w-3 h-3 text-slate-500" /> Escalated to Command
+                      </span>
+                    )
                   )}
                 </div>
               </div>

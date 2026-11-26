@@ -1,0 +1,312 @@
+import { UserRole } from '@/types/campaign';
+
+export interface RolePermissions {
+  allowedTabs: string[];
+  defaultTab: string;
+  canViewExecutiveKPIs: boolean;
+  canViewFullFinancialLedger: boolean;
+  canSubmitExpenseClaim: boolean;
+  canVetExpenses: boolean;
+  canApproveDisbursements: boolean;
+  canExecuteApprovals: boolean; // Candidate sign-offs
+  canViewAllFieldReports: boolean; // false = only own ward/constituency
+  canSubmitFieldReport: boolean;
+  canTriggerBurnSwitch: boolean;
+  canRegisterPersonnel: boolean;
+  canResolveIncidents: boolean;
+  canReportIncidents: boolean;
+  canViewIEBCAudit: boolean;
+  canManageSettings: boolean;
+}
+
+export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
+  candidate: {
+    allowedTabs: [
+      'dashboard',
+      'command_centre',
+      'field_ops',
+      'teams',
+      'calendar',
+      'finance',
+      'approvals',
+      'incidents',
+      'reports',
+      'settings',
+    ],
+    defaultTab: 'dashboard',
+    canViewExecutiveKPIs: true,
+    canViewFullFinancialLedger: true,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: true,
+    canApproveDisbursements: true,
+    canExecuteApprovals: true,
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: true,
+    canRegisterPersonnel: true,
+    canResolveIncidents: true,
+    canReportIncidents: true,
+    canViewIEBCAudit: true,
+    canManageSettings: true,
+  },
+  campaign_director: {
+    allowedTabs: [
+      'dashboard',
+      'command_centre',
+      'field_ops',
+      'teams',
+      'calendar',
+      'finance',
+      'approvals',
+      'incidents',
+      'reports',
+      'settings',
+    ],
+    defaultTab: 'dashboard',
+    canViewExecutiveKPIs: true,
+    canViewFullFinancialLedger: true,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: true,
+    canApproveDisbursements: true,
+    canExecuteApprovals: true,
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: true,
+    canRegisterPersonnel: true,
+    canResolveIncidents: true,
+    canReportIncidents: true,
+    canViewIEBCAudit: true,
+    canManageSettings: true,
+  },
+  campaign_manager: {
+    allowedTabs: [
+      'dashboard',
+      'command_centre',
+      'field_ops',
+      'teams',
+      'calendar',
+      'finance',
+      'incidents',
+      'reports',
+    ],
+    defaultTab: 'command_centre',
+    canViewExecutiveKPIs: true,
+    canViewFullFinancialLedger: true,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: true,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false, // Must be escalated to candidate/director
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: true,
+    canRegisterPersonnel: true,
+    canResolveIncidents: true,
+    canReportIncidents: true,
+    canViewIEBCAudit: true,
+    canManageSettings: false,
+  },
+  finance_officer: {
+    allowedTabs: [
+      'finance',
+      'approvals',
+      'reports',
+      'calendar',
+    ],
+    defaultTab: 'finance',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: true,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: true,
+    canApproveDisbursements: false, // Pre-vetting only; candidate must sign off
+    canExecuteApprovals: false,
+    canViewAllFieldReports: false,
+    canSubmitFieldReport: false,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: false,
+    canResolveIncidents: false,
+    canReportIncidents: true,
+    canViewIEBCAudit: true,
+    canManageSettings: false,
+  },
+  regional_coordinator: {
+    allowedTabs: [
+      'field_ops',
+      'teams',
+      'calendar',
+      'incidents',
+    ],
+    defaultTab: 'field_ops',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: true,
+    canResolveIncidents: true,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: false,
+  },
+  constituency_coordinator: {
+    allowedTabs: [
+      'field_ops',
+      'teams',
+      'calendar',
+      'incidents',
+    ],
+    defaultTab: 'field_ops',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: false,
+    canResolveIncidents: true,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: false,
+  },
+  ward_coordinator: {
+    allowedTabs: [
+      'field_ops',
+      'calendar',
+      'incidents',
+    ],
+    defaultTab: 'field_ops',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: false,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: false,
+    canResolveIncidents: false,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: false,
+  },
+  field_member: {
+    allowedTabs: [
+      'field_ops',
+      'incidents',
+    ],
+    defaultTab: 'field_ops',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: false,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: false,
+    canResolveIncidents: false,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: false,
+  },
+  events_coordinator: {
+    allowedTabs: [
+      'calendar',
+      'field_ops',
+      'incidents',
+    ],
+    defaultTab: 'calendar',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: false,
+    canResolveIncidents: false,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: false,
+  },
+  communications_officer: {
+    allowedTabs: [
+      'dashboard',
+      'calendar',
+      'field_ops',
+    ],
+    defaultTab: 'dashboard',
+    canViewExecutiveKPIs: true,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: true,
+    canSubmitFieldReport: true,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: false,
+    canResolveIncidents: false,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: false,
+  },
+  admin_staff: {
+    allowedTabs: [
+      'teams',
+      'calendar',
+      'settings',
+    ],
+    defaultTab: 'teams',
+    canViewExecutiveKPIs: false,
+    canViewFullFinancialLedger: false,
+    canSubmitExpenseClaim: true,
+    canVetExpenses: false,
+    canApproveDisbursements: false,
+    canExecuteApprovals: false,
+    canViewAllFieldReports: false,
+    canSubmitFieldReport: false,
+    canTriggerBurnSwitch: false,
+    canRegisterPersonnel: true,
+    canResolveIncidents: false,
+    canReportIncidents: true,
+    canViewIEBCAudit: false,
+    canManageSettings: true,
+  },
+};
+
+export const ROLE_LABELS: Record<UserRole, { title: string; badgeColor: string; tier: string }> = {
+  candidate: { title: 'Candidate (Aspirant)', badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', tier: 'Executive Command' },
+  campaign_director: { title: 'Campaign Director', badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', tier: 'Executive Command' },
+  campaign_manager: { title: 'Campaign Manager', badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/30', tier: 'Operations Command' },
+  finance_officer: { title: 'Chief Finance Officer', badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/30', tier: 'Treasury & Audit' },
+  regional_coordinator: { title: 'Regional Coordinator', badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/30', tier: 'Field Leadership' },
+  constituency_coordinator: { title: 'Constituency Coordinator', badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/30', tier: 'Field Leadership' },
+  ward_coordinator: { title: 'Ward Coordinator', badgeColor: 'bg-teal-500/10 text-teal-400 border-teal-500/30', tier: 'Grassroots Operations' },
+  field_member: { title: 'Field Member / Volunteer', badgeColor: 'bg-slate-500/10 text-slate-300 border-slate-500/30', tier: 'Mobilization Field' },
+  events_coordinator: { title: 'Events & Logistics Coordinator', badgeColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30', tier: 'Field Logistics' },
+  communications_officer: { title: 'Communications & Media Officer', badgeColor: 'bg-pink-500/10 text-pink-400 border-pink-500/30', tier: 'Strategic Comms' },
+  admin_staff: { title: 'Administrative Staff', badgeColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30', tier: 'HQ Support' },
+};
+
+export function getRolePermissions(role?: UserRole): RolePermissions {
+  if (!role || !ROLE_PERMISSIONS[role]) {
+    return ROLE_PERMISSIONS.field_member;
+  }
+  return ROLE_PERMISSIONS[role];
+}
+
+export function isTabAllowed(role: UserRole | undefined, tabId: string): boolean {
+  const permissions = getRolePermissions(role);
+  return permissions.allowedTabs.includes(tabId);
+}

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTenant } from '@/context/TenantContext';
+import { isTabAllowed, getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   LayoutDashboard, 
   ShieldAlert, 
@@ -33,7 +34,7 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const { currentTenant, allTenants, switchTenant, currentUser, switchUserRole, users } = useTenant();
 
-  const navigationItems = [
+  const allNavigationItems = [
     { id: 'dashboard', name: 'Executive Dashboard', icon: LayoutDashboard },
     { id: 'command_centre', name: 'Command Centre', icon: ShieldAlert },
     { id: 'field_ops', name: 'Field Operations', icon: MapPin },
@@ -45,6 +46,25 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'reports', name: 'IEBC & Analytics', icon: BarChart3 },
     { id: 'settings', name: 'Tenant Security', icon: Settings },
   ];
+
+  // RBAC: Dynamically filter navigation items based on active role
+  const navigationItems = allNavigationItems.filter(item => 
+    isTabAllowed(currentUser?.role, item.id)
+  );
+
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
+
+  const handleRoleChange = (userId: string) => {
+    switchUserRole(userId);
+    const targetUser = users.find(u => u.id === userId);
+    if (targetUser) {
+      const perms = getRolePermissions(targetUser.role);
+      // Auto-switch to default allowed tab if current active tab is inaccessible
+      if (!perms.allowedTabs.includes(activeTab)) {
+        setActiveTab(perms.defaultTab);
+      }
+    }
+  };
 
   return (
     <aside className="w-72 bg-slate-950 border-r border-slate-800 flex flex-col justify-between shrink-0 h-screen sticky top-0 overflow-y-auto font-sans">
@@ -105,11 +125,14 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               <UserCheck className="w-3 h-3 text-blue-400" />
               Viewing as Role:
             </span>
+            <span className="text-[9px] font-mono text-emerald-400">
+              {navigationItems.length}/10 Tabs
+            </span>
           </div>
           <select
             value={currentUser?.id}
-            onChange={(e) => switchUserRole(e.target.value)}
-            className="w-full text-[11px] bg-slate-900/80 border border-slate-800 rounded text-slate-300 px-2 py-1 focus:outline-none"
+            onChange={(e) => handleRoleChange(e.target.value)}
+            className="w-full text-[11px] bg-slate-900/80 border border-slate-800 rounded text-slate-300 px-2 py-1 focus:outline-none focus:border-emerald-500"
           >
             {users.map(u => (
               <option key={u.id} value={u.id}>
@@ -117,6 +140,10 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               </option>
             ))}
           </select>
+          <div className="mt-1 flex items-center justify-between text-[9px]">
+            <span className="text-slate-500">{roleInfo.tier}</span>
+            <span className="text-emerald-400/80 font-mono">RBAC Active</span>
+          </div>
         </div>
 
         {/* Navigation list */}
@@ -152,7 +179,11 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
           />
           <div className="truncate flex-1">
             <div className="text-xs font-bold text-white truncate">{currentUser?.name}</div>
-            <div className="text-[10px] text-slate-400 capitalize">{currentUser?.role.replace('_', ' ')}</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`text-[9px] px-1.5 py-0.2 rounded border font-semibold truncate ${roleInfo.badgeColor}`}>
+                {roleInfo.title}
+              </span>
+            </div>
           </div>
         </div>
 

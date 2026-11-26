@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   Users, 
   MapPin, 
@@ -19,11 +20,15 @@ import {
   ChevronRight,
   TrendingUp,
   FileCheck,
-  Fuel
+  Fuel,
+  Lock
 } from 'lucide-react';
 
 export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const { currentTenant, currentUser, reports, expenses, incidents, events, approvals, handleApproval } = useTenant();
+  const permissions = getRolePermissions(currentUser?.role);
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
+  const isCandidate = currentUser?.role === 'candidate';
 
   // Metrics computation
   const pendingApprovalsCount = approvals.filter(a => a.status === 'pending').length;
@@ -42,36 +47,46 @@ export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: s
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative">
           <div className="flex items-center gap-4">
             <img
-              src={currentTenant.avatarUrl}
-              alt={currentTenant.candidateName}
+              src={currentUser?.avatarUrl || currentTenant.avatarUrl}
+              alt={currentUser?.name || currentTenant.candidateName}
               className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/10"
             />
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                  {currentTenant.position}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${roleInfo.badgeColor}`}>
+                  {roleInfo.title}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
-                  {currentTenant.region}
+                  {currentTenant.region} • {roleInfo.tier}
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
-                Good morning, {currentTenant.candidateName}
+                Good morning, {isCandidate ? currentTenant.candidateName : currentUser?.name}
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Here is your consolidated campaign operations brief for Wednesday, 25 November.
+                Campaign situational brief for <strong className="text-slate-200">{currentTenant.name}</strong> • Thursday, 26 November.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button 
-              onClick={() => onNavigate('approvals')}
-              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 transition-all"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Review Approvals ({pendingApprovalsCount})
-            </button>
+            {permissions.canExecuteApprovals ? (
+              <button 
+                onClick={() => onNavigate('approvals')}
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20 transition-all"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Review Approvals ({pendingApprovalsCount})
+              </button>
+            ) : (
+              <button 
+                onClick={() => onNavigate('approvals')}
+                className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-medium text-xs flex items-center gap-2 transition-all"
+              >
+                <CheckSquare className="w-4 h-4 text-amber-400" />
+                View Pending Sign-Offs ({pendingApprovalsCount})
+              </button>
+            )}
             <button 
               onClick={() => onNavigate('field_ops')}
               className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 transition-all"
@@ -105,8 +120,10 @@ export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: s
         </div>
 
         <div 
-          onClick={() => onNavigate('finance')}
-          className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all group"
+          onClick={() => permissions.canViewFullFinancialLedger ? onNavigate('finance') : undefined}
+          className={`p-5 rounded-2xl bg-slate-900/70 border border-slate-800 transition-all group ${
+            permissions.canViewFullFinancialLedger ? 'hover:border-emerald-500/40 cursor-pointer' : 'cursor-default'
+          }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Recorded Spending</span>
@@ -115,10 +132,19 @@ export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: s
             </div>
           </div>
           <div className="mt-3 text-2xl sm:text-3xl font-extrabold text-white group-hover:text-blue-400 transition-colors">
-            KES {(totalApprovedExpenses / 1000).toFixed(0)}K
+            {permissions.canViewFullFinancialLedger 
+              ? `KES ${(totalApprovedExpenses / 1000).toFixed(0)}K`
+              : '••••••••'
+            }
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
-            <span>Approved disbursements</span>
+            {permissions.canViewFullFinancialLedger ? (
+              <span>Approved disbursements</span>
+            ) : (
+              <span className="text-amber-400/90 flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Treasury clearance required
+              </span>
+            )}
           </div>
         </div>
 
@@ -127,7 +153,9 @@ export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: s
           className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 cursor-pointer transition-all group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Decisions Awaiting You</span>
+            <span className="text-xs font-medium text-slate-400">
+              {permissions.canExecuteApprovals ? 'Decisions Awaiting You' : 'Pending Candidate Sign-Offs'}
+            </span>
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
               <CheckSquare className="w-4 h-4" />
             </div>
@@ -136,7 +164,7 @@ export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: s
             {pendingApprovalsCount}
           </div>
           <div className="mt-2 text-[11px] text-amber-400/90 flex items-center gap-1">
-            Requires candidate sign-off
+            {permissions.canExecuteApprovals ? 'Requires your direct sign-off' : 'Under Candidate review'}
           </div>
         </div>
 
@@ -254,18 +282,26 @@ export default function ExecutiveDashboard({ onNavigate }: { onNavigate: (tab: s
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleApproval(item.id, 'approved')}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleApproval(item.id, 'rejected')}
-                      className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold"
-                    >
-                      Hold
-                    </button>
+                    {permissions.canExecuteApprovals ? (
+                      <>
+                        <button
+                          onClick={() => handleApproval(item.id, 'approved')}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleApproval(item.id, 'rejected')}
+                          className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold"
+                        >
+                          Hold
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-amber-400/90 font-medium px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-1.5">
+                        <Lock className="w-3 h-3" /> Candidate Sign-Off
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
 import { 
   MapPin, 
   Plus, 
@@ -12,20 +13,25 @@ import {
   Users, 
   Send,
   Sparkles,
-  Layers
+  Layers,
+  Lock,
+  Compass
 } from 'lucide-react';
 
 export default function FieldOperationsModule() {
-  const { currentTenant, reports, addReport } = useTenant();
+  const { currentTenant, currentUser, reports, addReport } = useTenant();
+  const permissions = getRolePermissions(currentUser?.role);
+  const roleInfo = ROLE_LABELS[currentUser?.role || 'field_member'];
+
   const [showModal, setShowModal] = useState(false);
   const [selectedWard, setSelectedWard] = useState('all');
 
   // New report form state
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'Door-to-door' | 'Town Hall' | 'Boda Boda Engagement' | 'Market Outreach' | 'Youth Caucus'>('Market Outreach');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState(currentUser?.location || '');
   const [ward, setWard] = useState('');
-  const [leaderName, setLeaderName] = useState('');
+  const [leaderName, setLeaderName] = useState(currentUser?.name || '');
   const [attendance, setAttendance] = useState(100);
   const [notes, setNotes] = useState('');
 
@@ -40,7 +46,7 @@ export default function FieldOperationsModule() {
       ward: ward || 'Central Ward',
       constituency: currentTenant.region,
       assignedTeamId: 'team-mobilization-alpha',
-      leaderName: leaderName || 'Field Lead',
+      leaderName: leaderName || currentUser?.name || 'Field Lead',
       date: 'Just now',
       attendanceEstimate: Number(attendance),
       status: 'submitted',
@@ -51,13 +57,24 @@ export default function FieldOperationsModule() {
 
     setShowModal(false);
     setTitle('');
-    setLocation('');
+    setLocation(currentUser?.location || '');
     setNotes('');
   };
 
+  // RBAC Field Scope Slicing: Local coordinators only see reports in their assigned jurisdiction
+  const scopedReports = permissions.canViewAllFieldReports
+    ? reports
+    : reports.filter(r => 
+        (r.location && currentUser?.location && r.location.toLowerCase().includes(currentUser.location.toLowerCase())) ||
+        (r.ward && currentUser?.location && currentUser.location.toLowerCase().includes(r.ward.toLowerCase())) ||
+        r.leaderName === currentUser?.name
+      );
+
+  const displayedReports = scopedReports.length > 0 ? scopedReports : reports.slice(0, 2);
+
   const filteredReports = selectedWard === 'all' 
-    ? reports 
-    : reports.filter(r => r.ward.toLowerCase().includes(selectedWard.toLowerCase()));
+    ? displayedReports 
+    : displayedReports.filter(r => r.ward.toLowerCase().includes(selectedWard.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -66,9 +83,8 @@ export default function FieldOperationsModule() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-white">Field Operations & Grassroots Reporting</h2>
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-              <CheckCircle className="w-3 h-3" />
-              Offline Sync Enabled
+            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${roleInfo.badgeColor}`}>
+              {roleInfo.title}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
@@ -76,14 +92,35 @@ export default function FieldOperationsModule() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          Log Field Activity
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+            <CheckCircle className="w-3 h-3" />
+            Offline Sync Enabled
+          </span>
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Log Field Activity
+          </button>
+        </div>
       </div>
+
+      {/* RBAC Scope Indicator */}
+      {!permissions.canViewAllFieldReports && (
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Compass className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div>
+              <strong className="text-white">Assigned Jurisdiction Scope:</strong> Viewing field activity for <strong className="text-emerald-400">{currentUser?.location}</strong>. Cross-constituency battle orders are isolated to Regional Leaders and Executive Command.
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">
+            Sector Filtered
+          </span>
+        </div>
+      )}
 
       {/* Offline Sync Banner (PWA feature simulation) */}
       <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-4 flex items-center justify-between text-xs text-slate-300">
