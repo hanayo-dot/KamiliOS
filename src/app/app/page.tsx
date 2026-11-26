@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TenantProvider, useTenant } from '@/context/TenantContext';
 import { isTabAllowed, getRolePermissions, ROLE_LABELS } from '@/utils/rbac';
+import { useOfflineSync } from '@/utils/offlineSync';
 import Sidebar from '@/components/dashboard/Sidebar';
 import ExecutiveDashboard from '@/components/dashboard/ExecutiveDashboard';
 import FieldOperationsModule from '@/components/dashboard/FieldOperationsModule';
@@ -19,12 +20,15 @@ import {
   ExternalLink,
   Lock,
   ShieldAlert,
-  UserCheck
+  UserCheck,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 function DashboardShell() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { currentTenant, currentUser } = useTenant();
+  const { isOnline, queuedCount } = useOfflineSync();
 
   // Guard: Automatically redirect if active tab is forbidden for current role
   useEffect(() => {
@@ -72,11 +76,20 @@ function DashboardShell() {
             <div className="h-4 w-px bg-slate-800" />
 
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-xs font-semibold text-slate-300">Command Online</span>
+              {isOnline ? (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-emerald-400">Cloud Online</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-950/60 border border-amber-500/30 text-amber-400 text-xs font-semibold">
+                  <WifiOff className="w-3.5 h-3.5 animate-pulse" />
+                  <span>Rural Mode ({queuedCount} Queued)</span>
+                </div>
+              )}
             </div>
           </div>
         </header>
