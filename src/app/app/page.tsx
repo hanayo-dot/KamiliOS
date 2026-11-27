@@ -12,6 +12,7 @@ import ApprovalsModule from '@/components/dashboard/ApprovalsModule';
 import TeamsModule from '@/components/dashboard/TeamsModule';
 import IncidentsModule from '@/components/dashboard/IncidentsModule';
 import CommunicationsModule from '@/components/dashboard/CommunicationsModule';
+import IEBCComplianceModule from '@/components/dashboard/IEBCComplianceModule';
 import Link from 'next/link';
 import { 
   Bell, 
@@ -121,22 +122,12 @@ function DashboardShell() {
               {activeTab === 'teams' && <TeamsModule />}
               {activeTab === 'incidents' && <IncidentsModule />}
               {activeTab === 'communications' && <CommunicationsModule />}
-
-              {/* Placeholders for secondary modules */}
+              {activeTab === 'reports' && <IEBCComplianceModule />}
               {activeTab === 'calendar' && (
                 <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center">
                   <h3 className="text-lg font-bold text-white">Central Campaign Calendar & IEBC Rallies</h3>
                   <p className="text-xs text-slate-400 mt-2">
                     All confirmed candidate events, meetings, and motorcades are scheduled through the central Command Calendar.
-                  </p>
-                </div>
-              )}
-
-              {activeTab === 'reports' && (
-                <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center">
-                  <h3 className="text-lg font-bold text-white">IEBC Compliance & Statutory Campaign Financing Returns</h3>
-                  <p className="text-xs text-slate-400 mt-2">
-                    Export consolidated receipts and expenditure logs formatted directly to Kenyan electoral audit regulations.
                   </p>
                 </div>
               )}

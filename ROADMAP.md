@@ -145,13 +145,14 @@ KamiliOS defines **11 operational roles** divided into three strategic echelons:
 
 ---
 
-### Phase 5: IEBC Regulatory Audit Engine & Compliance Returns *(Status: SCHEDULED)*
-- [ ] **IEBC Campaign Financing Act Compliance:**
-  - Automated expenditure categorization matching Kenyan statutory audit reporting standards.
-  - Statutory donation limit caps and donor identity tracking.
-- [ ] **One-Click Audit PDF/CSV Export:**
-  - Formatted statutory returns ready for submission to the IEBC Registrar of Political Parties.
-  - Immutable transaction hashing for internal campaign auditing.
+### Phase 5: IEBC Regulatory Audit Engine & Compliance Returns *(Status: COMPLETED)*
+- [x] **IEBC Campaign Financing Act Compliance:**
+  - Automated expenditure categorization matching Kenyan statutory audit reporting standards ([src/utils/iebcCompliance.ts](file:///home/hanayo/KamiliOS/src/utils/iebcCompliance.ts)).
+  - Real-time statutory spending ceiling gauge tracking safe-harbor legal thresholds across Governor, MP, MCA, and Presidential tiers.
+  - Declared political contributions ledger with 20% single-donor cap enforcement and automated flagging of anonymous/prohibited donations (Section 11(3)).
+- [x] **One-Click Audit CSV & Cryptographic Certificate:**
+  - Full IEBC Form CF-04 statutory export generator with itemized Schedule A (Disbursements) and Schedule B (Donations).
+  - Tamper-proof SHA-256 audit stamping for formal gazettement and electoral auditor verification in [IEBCComplianceModule.tsx](file:///home/hanayo/KamiliOS/src/components/dashboard/IEBCComplianceModule.tsx).
 
 ---
 
